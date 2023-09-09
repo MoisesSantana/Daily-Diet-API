@@ -4,6 +4,15 @@ import { knex } from '../database'
 import { randomUUID } from 'crypto'
 import { checkSessionIdExists } from '../middlewares/check-session-id-exists'
 
+interface Meal {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  is_diet: boolean
+  created_at: string
+}
+
 export async function mealsRoutes(server: FastifyInstance) {
   server.addHook('preHandler', checkSessionIdExists)
 
@@ -24,6 +33,41 @@ export async function mealsRoutes(server: FastifyInstance) {
       .first()
 
     return reply.send({ meal })
+  })
+
+  server.get('/summary', async (request, reply) => {
+    const { sessionId } = request.cookies
+
+    const meals: Meal[] = await knex('meals').where({ user_id: sessionId })
+
+    let bestSequence: Meal[] = []
+    let currentSequence: Meal[] = []
+
+    meals.forEach((meal, index) => {
+      if (meal.is_diet) currentSequence.push(meal)
+
+      const isBestSequence = currentSequence.length > bestSequence.length
+      const isLastMeal = index === meals.length - 1
+      const breakSequence = !meal.is_diet || isLastMeal
+
+      if (breakSequence) {
+        if (isBestSequence) bestSequence = currentSequence
+
+        currentSequence = []
+      }
+    })
+
+    const totalMeals = meals.length
+    const totalDietMeals = meals.filter((meal) => meal.is_diet).length
+    const totalCheatMeals = meals.filter((meal) => !meal.is_diet).length
+    const bestSequenceLength = bestSequence.length
+
+    return reply.send({
+      totalMeals,
+      totalDietMeals,
+      totalCheatMeals,
+      bestSequence: bestSequenceLength,
+    })
   })
 
   server.post('/', async (request, reply) => {
