@@ -1,19 +1,29 @@
 import { FastifyInstance } from 'fastify'
+import { z } from 'zod'
+import { knex } from '../database'
+import { randomUUID } from 'crypto'
 
 export async function mealsRoutes(server: FastifyInstance) {
-  server.get('/', async (request, reply) => {
-    return { hello: 'meals get' }
-  })
-
   server.post('/', async (request, reply) => {
-    return { hello: 'meals post' }
-  })
+    const createMealBodySchema = z.object({
+      userId: z.string().uuid(), // temporário -> usar sessionId do request.cookies no futuro
+      name: z.string(),
+      description: z.string(),
+      isDiet: z.boolean(),
+    })
 
-  server.put('/:id', async (request, reply) => {
-    return { hello: 'meals put' }
-  })
+    const { userId, name, description, isDiet } = createMealBodySchema.parse(
+      request.body,
+    )
 
-  server.delete('/:id', async (request, reply) => {
-    return { hello: 'meals delete' }
+    await knex('meals').insert({
+      id: randomUUID(),
+      user_id: userId,
+      name,
+      description,
+      is_diet: isDiet,
+    })
+
+    return reply.status(201).send()
   })
 }
