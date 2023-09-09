@@ -1,19 +1,23 @@
 import { FastifyInstance } from 'fastify'
+import { z } from 'zod'
+import { randomUUID } from 'crypto'
+import { knex } from '../database'
 
 export async function usersRoutes(server: FastifyInstance) {
-  server.get('/', async (request, reply) => {
-    return { hello: 'user get' }
-  })
-
   server.post('/', async (request, reply) => {
-    return { hello: 'user post' }
-  })
+    const createUserBodySchema = z.object({
+      name: z.string(),
+      email: z.string().email(),
+    })
 
-  server.put('/:id', async (request, reply) => {
-    return { hello: 'user put' }
-  })
+    const { name, email } = createUserBodySchema.parse(request.body)
 
-  server.delete('/:id', async (request, reply) => {
-    return { hello: 'user delete' }
+    await knex('users').insert({
+      id: randomUUID(),
+      name,
+      email,
+    })
+
+    return reply.status(201).send()
   })
 }
