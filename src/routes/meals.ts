@@ -2,23 +2,27 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { knex } from '../database'
 import { randomUUID } from 'crypto'
+import { checkSessionIdExists } from '../middlewares/check-session-id-exists'
 
 export async function mealsRoutes(server: FastifyInstance) {
+  server.addHook('preHandler', checkSessionIdExists)
+
   server.post('/', async (request, reply) => {
     const createMealBodySchema = z.object({
-      userId: z.string().uuid(), // temporário -> usar sessionId do request.cookies no futuro
       name: z.string(),
       description: z.string(),
       isDiet: z.boolean(),
     })
 
-    const { userId, name, description, isDiet } = createMealBodySchema.parse(
+    const { name, description, isDiet } = createMealBodySchema.parse(
       request.body,
     )
 
+    const { sessionId } = request.cookies
+
     await knex('meals').insert({
       id: randomUUID(),
-      user_id: userId,
+      user_id: sessionId,
       name,
       description,
       is_diet: isDiet,
