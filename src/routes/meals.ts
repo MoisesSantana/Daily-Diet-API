@@ -61,4 +61,21 @@ export async function mealsRoutes(server: FastifyInstance) {
 
     return reply.status(204).send()
   })
+
+  server.delete('/:mealId', async (request, reply) => {
+    const { mealId } = request.params as { mealId: string }
+
+    const { sessionId } = request.cookies
+
+    const hasBeenDeleted = await knex('meals')
+      .where({
+        id: mealId,
+        user_id: sessionId,
+      })
+      .del()
+
+    if (!hasBeenDeleted) return reply.status(404).send({ error: 'Not found' })
+
+    return reply.status(204).send()
+  })
 }
